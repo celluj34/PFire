@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Moq;
 using PFire.Console.Services;
-using PFire.Core;
+using PFire.Core.Services;
 using Xunit;
 
 namespace PFire.Tests.PFire.Console.Services

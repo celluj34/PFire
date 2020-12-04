@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using PFire.Common.Models;
 using PFire.Core.Services;
-using PFire.Core.Session;
 
 namespace PFire.Core.Extensions
 {
@@ -14,14 +13,20 @@ namespace PFire.Core.Extensions
         {
             return serviceCollection.AddSingleton<IPFireServer, PFireServer>()
                                     .AddSingleton<IXFireClientManager, XFireClientManager>()
-                                    .AddSingleton<ITcpServer, TcpServer>()
+                                    .AddTransient<IXFireTcpListener, XFireTcpListener>()
                                     .AddSingleton<IPFireDatabase, PFireDatabase>()
+                                    .AddSingleton<IXFireMessageProcessor, XFireMessageProcessor>()
+                                    .AddSingleton<IXFireAttributeProcessor, XFireAttributeProcessor>()
+                                    .AddSingleton<IMessageSerializer, MessageSerializer>()
+                                    .AddSingleton<IXFireClientProvider, XFireClientProvider>()
+                                    .AddSingleton<IMessageTypeFactory, MessageTypeFactory>()
+                                    .AddTransient<XFireClient>()
                                     .AddSingleton(x =>
                                     {
                                         var serverSettings = x.GetRequiredService<IOptions<ServerSettings>>().Value;
-
-                                        return new TcpListener(IPAddress.Any, serverSettings.Port);
-                                    });
+                                        return new IPEndPoint(IPAddress.Any, serverSettings.Port);
+                                    })
+                                    .AddSingleton<TcpListener>();
         }
     }
 }

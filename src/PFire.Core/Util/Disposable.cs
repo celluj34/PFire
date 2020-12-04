@@ -5,29 +5,6 @@ namespace PFire.Core.Util
     public abstract class Disposable : IDisposable
     {
         protected bool Disposed;
-        protected bool IsDisposing;
-        protected virtual void Dispose(bool disposing)
-        {
-            if(Disposed)
-            {
-                return;
-            }
-
-            if (disposing)
-            {
-                try
-                {
-                    IsDisposing = true;
-                    DisposeManagedResources();
-                }
-                finally
-                {
-                    IsDisposing = false;
-                }
-            }
-
-            Disposed = true;
-        }
 
         public void Dispose()
         {
@@ -35,6 +12,21 @@ namespace PFire.Core.Util
             GC.SuppressFinalize(this);
         }
 
-        protected virtual void DisposeManagedResources() { }
+        private void Dispose(bool disposing)
+        {
+            if (Disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                DisposeManagedResources();
+            }
+
+            Disposed = true;
+        }
+
+        protected abstract void DisposeManagedResources();
     }
 }
