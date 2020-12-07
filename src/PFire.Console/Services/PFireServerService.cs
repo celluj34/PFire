@@ -5,7 +5,7 @@ using PFire.Core;
 
 namespace PFire.Console.Services
 {
-    internal class PFireServerService : IHostedService
+    internal class PFireServerService : BackgroundService
     {
         private readonly IPFireServer _pfServer;
 
@@ -14,14 +14,9 @@ namespace PFire.Console.Services
             _pfServer = pFireServer;
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        protected override Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            return _pfServer.Start();
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            return _pfServer.Stop();
+            return _pfServer.Execute(cancellationToken);
         }
     }
 }
