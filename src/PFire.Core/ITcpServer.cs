@@ -8,15 +8,10 @@ namespace PFire.Core
 {
     internal interface ITcpServer
     {
-        delegate Task OnConnectionHandler(IXFireClient sessionContext);
+        event Func<IXFireClient, IMessage, Task> OnReceive;
+        event Func<IXFireClient, Task> OnConnection;
+        event Func<IXFireClient, Task> OnDisconnection;
 
-        delegate Task OnDisconnectionHandler(IXFireClient sessionContext);
-
-        delegate Task OnReceiveHandler(IXFireClient sessionContext, IMessage message);
-
-        event OnReceiveHandler OnReceive;
-        event OnConnectionHandler OnConnection;
-        event OnDisconnectionHandler OnDisconnection;
         Task Listen(CancellationToken cancellationToken);
         Task Shutdown(CancellationToken cancellationToken);
     }

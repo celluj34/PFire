@@ -34,9 +34,9 @@ namespace PFire.Core.Session
 
         private readonly IXFireClientManager _clientManager;
         private readonly AutoResetEvent _clientWaitEvent;
-        private readonly ITcpServer.OnDisconnectionHandler _disconnectionHandler;
+        private readonly Func<IXFireClient, Task> _disconnectionHandler;
         private readonly object _lock;
-        private readonly ITcpServer.OnReceiveHandler _receiveHandler;
+        private readonly Func<IXFireClient, IMessage, Task> _receiveHandler;
         private bool _connected;
         private bool _initialized;
         private DateTime _lastReceivedFrom;
@@ -45,8 +45,8 @@ namespace PFire.Core.Session
         public XFireClient(TcpClient tcpClient,
                            IXFireClientManager clientManager,
                            ILogger logger,
-                           ITcpServer.OnReceiveHandler receiveHandler,
-                           ITcpServer.OnDisconnectionHandler disconnectionHandler)
+                           Func<IXFireClient, IMessage, Task> receiveHandler,
+                           Func<IXFireClient, Task> disconnectionHandler)
         {
             _receiveHandler = receiveHandler;
             _disconnectionHandler = disconnectionHandler;

@@ -22,9 +22,9 @@ namespace PFire.Core
             _logger = logger;
         }
 
-        public event ITcpServer.OnReceiveHandler OnReceive;
-        public event ITcpServer.OnConnectionHandler OnConnection;
-        public event ITcpServer.OnDisconnectionHandler OnDisconnection;
+        public event Func<IXFireClient, IMessage, Task> OnReceive;
+        public event Func<IXFireClient, Task> OnConnection;
+        public event Func<IXFireClient, Task> OnDisconnection;
 
         public async Task Listen(CancellationToken cancellationToken)
         {
