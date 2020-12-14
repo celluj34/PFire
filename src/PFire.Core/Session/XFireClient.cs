@@ -17,7 +17,7 @@ namespace PFire.Core.Session
     {
         UserModel User { get; set; }
         Guid SessionId { get; }
-        EndPoint RemoteEndPoint { get; }
+        int PublicIp { get; }
         PFireServer Server { get; set; }
         ILogger Logger { get; }
         string Salt { get; }
@@ -75,7 +75,28 @@ namespace PFire.Core.Session
 
         private TimeSpan ClientTimeout => TimeSpan.FromMinutes(ClientTimeoutInMinutes);
 
-        public EndPoint RemoteEndPoint => _tcpClient.Client.RemoteEndPoint;
+        public int PublicIp
+        {
+            get
+            {
+                IPAddress address;
+                var remoteEndPoint = _tcpClient.Client.RemoteEndPoint;
+                if (remoteEndPoint is IPEndPoint ipEndPoint)
+                {
+                    address = ipEndPoint.Address;
+                }
+                else
+                {
+                    var addressStr = remoteEndPoint.ToString();
+                    var ip = addressStr.Substring(0, addressStr.IndexOf(":"));
+                    address = IPAddress.Parse(ip);
+                }
+
+                var addressBytes = address.GetAddressBytes();
+
+                return BitConverter.ToInt32(addressBytes);
+            }
+        }
 
         public string Salt { get; }
 

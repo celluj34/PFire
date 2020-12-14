@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using PFire.Core.Session;
@@ -66,8 +65,7 @@ namespace PFire.Core.Protocol.Messages.Outbound
             Nickname = string.IsNullOrEmpty(context.User.Nickname) ? context.User.Username : context.User.Nickname;
             MinRect = 1;
             MaxRect = 164867;
-            var ipAddress = StripPortFromIPAddress(context.RemoteEndPoint.ToString());
-            PublicIp = BitConverter.ToInt32(IPAddress.Parse(ipAddress).GetAddressBytes(), 0);
+            PublicIp = context.PublicIp;
             Salt = context.Salt;
             Reason = "Mq_P8Ad3aMEUvFinw0ceu6FITnZTWXxg46XU8xHW";
 
@@ -75,11 +73,6 @@ namespace PFire.Core.Protocol.Messages.Outbound
             context.Logger.LogInformation($"User {context.User.Username} logged in");
 
             return Task.CompletedTask;
-        }
-
-        private static string StripPortFromIPAddress(string address)
-        {
-            return address.Substring(0, address.IndexOf(":"));
         }
     }
 }
