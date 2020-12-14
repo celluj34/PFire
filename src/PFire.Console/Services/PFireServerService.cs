@@ -16,12 +16,12 @@ namespace PFire.Console.Services
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            return _pfServer.Start();
+            return _pfServer.Start(cancellationToken);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            return _pfServer.Stop();
+            return _pfServer.Stop(cancellationToken);
         }
     }
 }

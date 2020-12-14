@@ -1,6 +1,9 @@
-﻿using System.Net.Sockets;
+﻿using System;
+using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using PFire.Core.Protocol.Messages;
 using PFire.Core.Session;
 
 namespace PFire.Core
@@ -23,7 +26,7 @@ namespace PFire.Core
         public event ITcpServer.OnConnectionHandler OnConnection;
         public event ITcpServer.OnDisconnectionHandler OnDisconnection;
 
-        public async Task Listen()
+        public async Task Listen(CancellationToken cancellationToken)
         {
             _running = true;
             _listener.Start();
@@ -31,8 +34,10 @@ namespace PFire.Core
             await Accept().ConfigureAwait(false);
         }
 
-        public void Shutdown()
+        public async Task Shutdown(CancellationToken cancellationToken)
         {
+            await Task.Yield();
+
             _listener.Stop();
             _running = false;
         }

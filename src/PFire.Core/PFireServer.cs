@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using PFire.Core.Models;
 using PFire.Core.Protocol.Messages;
@@ -10,8 +11,8 @@ namespace PFire.Core
 {
     public interface IPFireServer
     {
-        Task Start();
-        Task Stop();
+        Task Start(CancellationToken cancellationToken);
+        Task Stop(CancellationToken cancellationToken);
     }
 
     internal sealed class PFireServer : IPFireServer
@@ -32,14 +33,14 @@ namespace PFire.Core
 
         public IPFireDatabase Database { get; }
 
-        public async Task Start()
+        public Task Start(CancellationToken cancellationToken)
         {
-            await _server.Listen();
+            return _server.Listen(cancellationToken);
         }
 
-        public Task Stop()
+        public Task Stop(CancellationToken cancellationToken)
         {
-            _server.Shutdown();
+            _server.Shutdown(cancellationToken);
 
             return Task.CompletedTask;
         }
