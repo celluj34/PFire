@@ -51,10 +51,10 @@ namespace PFire.Core
             // because of the friends of this user processing
             RemoveSession(disconnectedClient);
 
-            await UpdateFriendsWithDisconnetedStatus(disconnectedClient);
+            await UpdateFriendsWithDisconnectedStatus(disconnectedClient);
         }
 
-        private async Task UpdateFriendsWithDisconnetedStatus(IXFireClient disconnectedClient)
+        private async Task UpdateFriendsWithDisconnectedStatus(IXFireClient disconnectedClient)
         {
             var friends = await Database.QueryFriends(disconnectedClient.User);
 
