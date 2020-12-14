@@ -1,6 +1,8 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using PFire.Common.Models;
 using PFire.Core.Services;
 using PFire.Core.Session;
 
@@ -14,7 +16,12 @@ namespace PFire.Core.Extensions
                                     .AddSingleton<IXFireClientManager, XFireClientManager>()
                                     .AddSingleton<ITcpServer, TcpServer>()
                                     .AddSingleton<IPFireDatabase, PFireDatabase>()
-                                    .AddSingleton(x => new TcpListener(new IPEndPoint(IPAddress.Any, 25999)));
+                                    .AddSingleton(x =>
+                                    {
+                                        var serverSettings = x.GetRequiredService<IOptions<ServerSettings>>().Value;
+
+                                        return new TcpListener(IPAddress.Any, serverSettings.Port);
+                                    });
         }
     }
 }
