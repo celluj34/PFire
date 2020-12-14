@@ -30,12 +30,12 @@ namespace PFire.Core.Protocol.Messages.Outbound
         public override async Task Process(IXFireClient context)
         {
             var friends = await context.Server.Database.QueryFriends(_ownerUser);
-            friends.ForEach(f =>
+            foreach (var f in friends)
             {
                 UserIds.Add(f.Id);
                 Usernames.Add(f.Username);
                 Nicks.Add(f.Nickname);
-            });
+            }
         }
     }
 }

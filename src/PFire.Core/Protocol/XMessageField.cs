@@ -3,22 +3,21 @@ using System.Text;
 
 namespace PFire.Core.Protocol
 {
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = true)]
+    [AttributeUsage(AttributeTargets.Property)]
     internal sealed class XMessageField : Attribute
     {
-        public string Name { get; }
-        public byte[] NameAsBytes => Encoding.UTF8.GetBytes(Name);
-        public bool NonTextualName { get; }
-
         public XMessageField(string name)
         {
             Name = name;
         }
 
-        public XMessageField(params byte[] name)
-               : this(Encoding.UTF8.GetString(name))
+        public XMessageField(params byte[] name) : this(Encoding.UTF8.GetString(name))
         {
             NonTextualName = true;
         }
+
+        public string Name { get; }
+        public byte[] NameAsBytes => Encoding.UTF8.GetBytes(Name);
+        public bool NonTextualName { get; }
     }
 }

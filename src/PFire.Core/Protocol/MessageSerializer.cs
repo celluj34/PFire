@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -85,43 +84,36 @@ namespace PFire.Core.Protocol
 
         private static byte[] WritePayloadFromMessage(IMessage message)
         {
-            var propertyInfo = message.GetType().GetProperties(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
-            var attributesToBeWritten = new List<Tuple<XMessageField, byte, dynamic>>();
-            propertyInfo.Where(a => Attribute.IsDefined(a, typeof(XMessageField)))
-                        .ToList()
-                        .ForEach(property =>
-                        {
-                            var propertyValue = property.GetValue(message);
-                            var attributeDefinition = property.GetCustomAttribute<XMessageField>();
-                            var attribute = XFireAttributeFactory.Instance.GetAttribute(property.PropertyType);
-
-                            attributesToBeWritten.Add(
-                                Tuple.Create<XMessageField, byte, dynamic>(
-                                    attributeDefinition,
-                                    attribute.AttributeTypeId,
-                                    propertyValue
-                                )
-                            );
-                        });
+            var attributeFactory = XFireAttributeFactory.Instance;
+            var attributesToBeWritten = message.GetType()
+                                               .GetProperties(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public)
+                                               .Where(a => Attribute.IsDefined(a, typeof(XMessageField)))
+                                               .Select(property => new
+                                               {
+                                                   messageField = property.GetCustomAttribute<XMessageField>(),
+                                                   attribute = attributeFactory.GetAttribute(property.PropertyType),
+                                                   value = property.GetValue(message)
+                                               })
+                                               .Where(x => x.messageField != null)
+                                               .ToList();
 
             using var ms = new MemoryStream();
             using var writer = new BinaryWriter(ms);
             writer.Write((short)message.MessageTypeId);
             writer.Write((byte)attributesToBeWritten.Count);
-            attributesToBeWritten.ForEach(a =>
+            foreach (var a in attributesToBeWritten)
             {
-                var attribute = XFireAttributeFactory.Instance.GetAttribute(a.Item2);
-                if (a.Item1.NonTextualName)
+                if (a.messageField.NonTextualName)
                 {
-                    attribute.WriteNameWithoutLengthPrefix(writer, a.Item1.NameAsBytes);
-                    attribute.WriteType(writer);
-                    attribute.WriteValue(writer, a.Item3);
+                    a.attribute.WriteNameWithoutLengthPrefix(writer, a.messageField.NameAsBytes);
+                    a.attribute.WriteType(writer);
+                    a.attribute.WriteValue(writer, a.value);
                 }
                 else
                 {
-                    attribute.WriteAll(writer, a.Item1.Name, a.Item3);
+                    a.attribute.WriteAll(writer, a.messageField.Name, a.value);
                 }
-            });
+            }
 
             return ms.ToArray();
         }
