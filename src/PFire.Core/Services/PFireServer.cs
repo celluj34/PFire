@@ -72,7 +72,10 @@ namespace PFire.Core.Services
             foreach (var friend in friends)
             {
                 var friendClient = _clientManager.GetSession(friend);
-                friendClient?.SendAndProcessMessage(new FriendsSessionAssign(friend));
+                friendClient?.SendAndProcessMessage(new FriendsSessionAssign
+                {
+                    Owner = friend
+                });
             }
 
             disconnectedClient.Dispose();

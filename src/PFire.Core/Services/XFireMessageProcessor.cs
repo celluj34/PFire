@@ -164,10 +164,18 @@ namespace PFire.Core.Services
                     var chatRooms = new ChatRooms();
                     await xFireClient.SendAndProcessMessage(chatRooms);
 
-                    var friendsList = new FriendsList(xFireClient.User);
+                    var friendsList = new FriendsList
+                    {
+                        Owner = xFireClient.User
+                    };
+
                     await xFireClient.SendAndProcessMessage(friendsList);
 
-                    var friendsStatus = new FriendsSessionAssign(xFireClient.User);
+                    var friendsStatus = new FriendsSessionAssign
+                    {
+                        Owner = xFireClient.User
+                    };
+
                     await xFireClient.SendAndProcessMessage(friendsStatus);
 
                     // Tell friends this user came online
@@ -178,12 +186,29 @@ namespace PFire.Core.Services
                         var otherSession = xFireClientManager.GetSession(friend);
                         if (otherSession != null)
                         {
-                            await otherSession.SendAndProcessMessage(new FriendsSessionAssign(friend));
+                            await otherSession.SendAndProcessMessage(new FriendsSessionAssign
+                            {
+                                Owner = friend
+                            });
                         }
                     }
 
                     var pendingFriendRequests = await _database.QueryPendingFriendRequests(xFireClient.User);
-                    foreach (var request in pendingFriendRequests.Select(request => new FriendInvite(request.Username, request.Nickname, request.Message)))
+                    foreach (var request in pendingFriendRequests.Select(request => new FriendInvite
+                    {
+                        Usernames =
+                        {
+                            request.Username
+                        },
+                        Nicknames =
+                        {
+                            request.Nickname
+                        },
+                        Messages =
+                        {
+                            request.Message
+                        }
+                    }))
                     {
                         await xFireClient.SendAndProcessMessage(request);
                     }
@@ -264,7 +289,22 @@ namespace PFire.Core.Services
                 case FriendRequest friendRequest:
                 {
                     var recipient = await _database.QueryUser(friendRequest.Username);
-                    var invite = new FriendInvite(xFireClient.User.Username, xFireClient.User.Nickname, friendRequest.Message);
+                    var invite = new FriendInvite
+                    {
+                        Usernames =
+                        {
+                            xFireClient.User.Username
+                        },
+                        Nicknames =
+                        {
+                            xFireClient.User.Nickname
+                        },
+                        Messages =
+                        {
+                            friendRequest.Message
+                        }
+                    };
+
                     await Process(invite, xFireClient, xFireClientManager);
 
                     await _database.InsertFriendRequest(xFireClient.User, recipient, friendRequest.Message);
@@ -283,15 +323,29 @@ namespace PFire.Core.Services
 
                     await _database.InsertMutualFriend(xFireClient.User, friend);
 
-                    await xFireClient.SendAndProcessMessage(new FriendsList(xFireClient.User));
-                    await xFireClient.SendAndProcessMessage(new FriendsSessionAssign(xFireClient.User));
+                    await xFireClient.SendAndProcessMessage(new FriendsList
+                    {
+                        Owner = xFireClient.User
+                    });
+
+                    await xFireClient.SendAndProcessMessage(new FriendsSessionAssign
+                    {
+                        Owner = xFireClient.User
+                    });
 
                     // It's possible to accept a friend request where the inviter is not online
                     var friendSession = xFireClientManager.GetSession(friend);
                     if (friendSession != null)
                     {
-                        await friendSession.SendAndProcessMessage(new FriendsList(friend));
-                        await friendSession.SendAndProcessMessage(new FriendsSessionAssign(friend));
+                        await friendSession.SendAndProcessMessage(new FriendsList
+                        {
+                            Owner = friend
+                        });
+
+                        await friendSession.SendAndProcessMessage(new FriendsSessionAssign
+                        {
+                            Owner = friend
+                        });
                     }
 
                     var pendingRequests = await _database.QueryPendingFriendRequests(xFireClient.User);
@@ -332,7 +386,11 @@ namespace PFire.Core.Services
 
                     await _database.UpdateNickname(xFireClient.User, nicknameChange.Nickname);
 
-                    var updatedFriendsList = new FriendsList(xFireClient.User);
+                    var updatedFriendsList = new FriendsList
+                    {
+                        Owner = xFireClient.User
+                    };
+
                     var queryFriends = await _database.QueryFriends(xFireClient.User);
                     foreach (var friend in queryFriends)
                     {
@@ -347,7 +405,18 @@ namespace PFire.Core.Services
                 }
                 case StatusChange statusChange:
                 {
-                    var friendStatusChange = new FriendStatusChange(xFireClient.SessionId, statusChange.Message);
+                    var friendStatusChange = new FriendStatusChange
+                    {
+                        SessionIds =
+                        {
+                            xFireClient.SessionId
+                        },
+                        Messages =
+                        {
+                            statusChange.Message
+                        }
+                    };
+
                     var friends = await _database.QueryFriends(xFireClient.User);
                     foreach (var friend in friends)
                     {
@@ -362,7 +431,11 @@ namespace PFire.Core.Services
                 }
                 case UserLookup userLookup:
                 {
-                    var result = new UserLookupResult(userLookup.Username);
+                    var result = new UserLookupResult
+                    {
+                        QueryByUsername = userLookup.Username
+                    };
+
                     await xFireClient.SendAndProcessMessage(result);
 
                     break;

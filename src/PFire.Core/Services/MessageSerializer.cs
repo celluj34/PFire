@@ -24,12 +24,12 @@ namespace PFire.Core.Services
     {
         private const int MessageSizeLengthInBytes = 2;
         private readonly ILogger<MessageSerializer> _logger;
-        private readonly IMessageTypeFactory _messageTypeFactory;
+        private readonly IMessageFactory _messageFactory;
 
-        public MessageSerializer(ILogger<MessageSerializer> logger, IMessageTypeFactory messageTypeFactory)
+        public MessageSerializer(ILogger<MessageSerializer> logger, IMessageFactory messageFactory)
         {
             _logger = logger;
-            _messageTypeFactory = messageTypeFactory;
+            _messageFactory = messageFactory;
         }
 
         public byte[] Serialize(IMessage message)
@@ -47,12 +47,12 @@ namespace PFire.Core.Services
 
         public IMessage Deserialize(byte[] bytes)
         {
-            using var reader = new BinaryReader(new MemoryStream(bytes));
-            var messageTypeId = reader.ReadInt16();
-            var xMessageType = (XFireMessageType)messageTypeId;
+            using var memoryStream = new MemoryStream(bytes);
+            using var reader = new BinaryReader(memoryStream);
 
-            var messageType = _messageTypeFactory.GetMessageType(xMessageType);
-            var message = Activator.CreateInstance(messageType) as IMessage;
+            var messageType = (XFireMessageType)reader.ReadInt16();
+
+            var message = _messageFactory.CreateMessage(messageType);
             return Deserialize(reader, message);
         }
 
@@ -69,8 +69,8 @@ namespace PFire.Core.Services
                                                .Where(x => x.messageField != null)
                                                .ToList();
 
-            using var ms = new MemoryStream();
-            using var writer = new BinaryWriter(ms);
+            using var memoryStream = new MemoryStream();
+            using var writer = new BinaryWriter(memoryStream);
             writer.Write((short)message.MessageTypeId);
             writer.Write((byte)attributesToBeWritten.Count);
             foreach (var a in attributesToBeWritten)
@@ -78,7 +78,7 @@ namespace PFire.Core.Services
                 WriteAttribute(writer, a.messageField, a.value);
             }
 
-            return ms.ToArray();
+            return memoryStream.ToArray();
         }
 
         private IMessage Deserialize(BinaryReader reader, IMessage messageBase)
@@ -249,24 +249,18 @@ namespace PFire.Core.Services
                         var messageTypeName = readValue;
                         var xFireAttributeType = (XFireAttributeType)reader.ReadByte();
                         var messageType = ReadAttribute(reader, xFireAttributeType);
-                        var rawMessage = CreateMessage(messageType);
+                        var rawMessage = (IMessage)((short)messageType switch
+                        {
+                            0 => new ChatMessage(),
+                            1 => new ChatAcknowledgement(),
+                            _ => throw new UnknownMessageTypeException((XFireMessageType)(short)messageType)
+                        });
+
                         var message = Deserialize(reader, rawMessage);
                         values.Add(messageTypeName, message);
                     }
 
                     return values;
-
-                    IMessage CreateMessage(short messageType)
-                    {
-                        Type type = messageType switch
-                        {
-                            0 => typeof(ChatMessage),
-                            1 => typeof(ChatAcknowledgement),
-                            _ => throw new UnknownMessageTypeException((XFireMessageType)messageType)
-                        };
-
-                        return (IMessage)Activator.CreateInstance(type);
-                    }
                 }
 
                 case XFireAttributeType.String:
