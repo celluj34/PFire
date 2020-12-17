@@ -30,7 +30,6 @@ namespace PFire.Core.Services
         private const int ClientTimeoutInMinutes = 5;
 
         private readonly IXFireClientManager _clientManager;
-        private readonly object _lock = new object();
         private readonly ILogger<XFireClient> _logger;
         private readonly IXFireMessageProcessor _messageProcessor;
         private readonly IMessageSerializer _messageSerializer;
@@ -180,44 +179,41 @@ namespace PFire.Core.Services
         {
             while (_connected)
             {
-                lock (_lock)
+                try
                 {
-                    try
+                    if (!_tcpClient.Connected)
                     {
-                        if (_tcpClient.Connected)
+                        // the client says the other end has gone, 
+                        // lets shut down this client 
+                        _logger.LogError($"Client: {User.Username}-{SessionId} has disconnected");
+                        await _disconnectionHandler(this);
+
+                        return;
+                    }
+
+                    var stream = _tcpClient.GetStream();
+
+                    if (stream.DataAvailable)
+                    {
+                        if (_initialized)
                         {
-                            var stream = _tcpClient.GetStream();
-
-                            if (stream.DataAvailable)
-                            {
-                                if (!_initialized)
-                                {
-                                    ReadOpeningHeader(stream);
-                                }
-                                else
-                                {
-                                    ReadMessage(stream);
-                                }
-
-                                // as we read something (i.e we're still here) we can update the last read time
-                                _lastReceivedFrom = DateTime.UtcNow;
-                            }
+                            await ReadMessage(stream);
                         }
                         else
                         {
-                            // the client says the other end has gone, 
-                            // lets shut down this client 
-                            _logger.LogError($"Client: {User.Username}-{SessionId} has disconnected");
-                            _disconnectionHandler(this);
+                            await ReadOpeningHeader(stream);
                         }
+
+                        // as we read something (i.e we're still here) we can update the last read time
+                        _lastReceivedFrom = DateTime.UtcNow;
                     }
-                    catch (IOException ioe)
-                    {
-                        _logger.LogError(ioe, "An exception occurred when reading from the tcp stream");
-                        // the read timed out 
-                        // this could indicate that the other end is bad
-                        // the lifetime handler will help
-                    }
+                }
+                catch (IOException ioe)
+                {
+                    _logger.LogError(ioe, "An exception occurred when reading from the tcp stream");
+                    // the read timed out 
+                    // this could indicate that the other end is bad
+                    // the lifetime handler will help
                 }
 
                 if (!_connected)
@@ -232,21 +228,21 @@ namespace PFire.Core.Services
             }
         }
 
-        private void ReadMessage(NetworkStream stream)
+        private async Task ReadMessage(NetworkStream stream)
         {
             // Header determines size of message
             var headerBuffer = new byte[2];
-            var read = stream.Read(headerBuffer, 0, headerBuffer.Length);
+            var read = await stream.ReadAsync(headerBuffer, 0, headerBuffer.Length);
             if (read == 0)
             {
                 _logger.LogCritical($"Client {User?.Username}-{SessionId} disconnected via 0 read");
-                _disconnectionHandler(this);
+                await _disconnectionHandler(this);
                 return;
             }
 
             var messageLength = BitConverter.ToInt16(headerBuffer, 0) - headerBuffer.Length;
             var messageBuffer = new byte[messageLength];
-            read = stream.Read(messageBuffer, 0, messageLength);
+            read = await stream.ReadAsync(messageBuffer, 0, messageLength);
 
             _logger.LogTrace($"RECEIVED RAW: {BitConverter.ToString(messageBuffer)}");
 
@@ -259,7 +255,7 @@ namespace PFire.Core.Services
 
                 _logger.LogDebug($"Recv message[{username},{userId}]: {message}");
 
-                _messageProcessor.Process(message, this, _clientManager);
+                await _messageProcessor.Process(message, this, _clientManager);
             }
             catch (UnknownMessageTypeException messageTypeEx)
             {
@@ -271,11 +267,11 @@ namespace PFire.Core.Services
             }
         }
 
-        private void ReadOpeningHeader(NetworkStream stream)
+        private async Task ReadOpeningHeader(NetworkStream stream)
         {
             // First time the client connects, an opening statement of 4 bytes is sent that needs to be ignored
             var openingStatementBuffer = new byte[4];
-            var read = stream.Read(openingStatementBuffer, 0, openingStatementBuffer.Length);
+            var read = await stream.ReadAsync(openingStatementBuffer, 0, openingStatementBuffer.Length);
 
             _initialized = read == 4;
 
