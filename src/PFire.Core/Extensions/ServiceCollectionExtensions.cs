@@ -16,7 +16,6 @@ namespace PFire.Core.Extensions
                                     .AddTransient<IXFireTcpListener, XFireTcpListener>()
                                     .AddSingleton<IPFireDatabase, PFireDatabase>()
                                     .AddSingleton<IXFireMessageProcessor, XFireMessageProcessor>()
-                                    .AddSingleton<IXFireAttributeProcessor, XFireAttributeProcessor>()
                                     .AddSingleton<IMessageSerializer, MessageSerializer>()
                                     .AddSingleton<IXFireClientProvider, XFireClientProvider>()
                                     .AddSingleton<IMessageTypeFactory, MessageTypeFactory>()
