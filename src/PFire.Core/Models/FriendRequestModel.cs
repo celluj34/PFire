@@ -1,6 +1,6 @@
 ﻿namespace PFire.Core.Models
 {
-    public class FriendRequestModel
+    internal class FriendRequestModel
     {
         public int Id { get; set; }
         public string Username { get; set; }

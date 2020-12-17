@@ -15,7 +15,7 @@ namespace PFire.Core.Messages.Outbound
             Nicks = new List<string>();
         }
 
-        public UserModel Owner { get; set; }
+        public UserModel Owner { get; }
 
         [XMessageField("userid")]
         public List<int> UserIds { get; set; }

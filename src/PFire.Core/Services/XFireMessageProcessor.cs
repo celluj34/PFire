@@ -192,7 +192,7 @@ namespace PFire.Core.Services
                 }
                 case FriendsSessionAssign friendsSessionAssign:
                 {
-                    var friends = await _database.QueryFriends(friendsSessionAssign.OwnerUser);
+                    var friends = await _database.QueryFriends(friendsSessionAssign.Owner);
                     foreach (var friend in friends)
                     {
                         var friendSession = xFireClientManager.GetSession(friend);

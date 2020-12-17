@@ -1,6 +1,6 @@
 ﻿namespace PFire.Core.Models
 {
-    public class UserModel
+    internal class UserModel
     {
         public int Id { get; set; }
         public string Username { get; set; }
