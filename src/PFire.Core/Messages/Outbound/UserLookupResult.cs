@@ -5,17 +5,15 @@ namespace PFire.Core.Messages.Outbound
 {
     internal sealed class UserLookupResult : IMessage
     {
-        public readonly string QueryByUsername;
-
-        public UserLookupResult(string username)
+        public UserLookupResult()
         {
-            QueryByUsername = username;
-
             Usernames = new List<string>();
             FirstNames = new List<string>();
             LastNames = new List<string>();
             Emails = new List<string>();
         }
+
+        public string QueryByUsername { get; set; }
 
         [XMessageField("name")]
         public List<string> Usernames { get; set; }

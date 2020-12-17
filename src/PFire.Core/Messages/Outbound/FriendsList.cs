@@ -6,16 +6,14 @@ namespace PFire.Core.Messages.Outbound
 {
     internal sealed class FriendsList : IMessage
     {
-        public FriendsList(UserModel owner)
+        public FriendsList()
         {
-            Owner = owner;
-
             UserIds = new List<int>();
             Usernames = new List<string>();
             Nicks = new List<string>();
         }
 
-        public UserModel Owner { get; }
+        public UserModel Owner { get; set; }
 
         [XMessageField("userid")]
         public List<int> UserIds { get; set; }

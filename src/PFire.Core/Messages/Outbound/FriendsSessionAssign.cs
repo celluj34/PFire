@@ -9,14 +9,13 @@ namespace PFire.Core.Messages.Outbound
     {
         public static readonly Guid FriendIsOffLineSessionId = Guid.Empty;
 
-        public FriendsSessionAssign(UserModel owner)
+        public FriendsSessionAssign()
         {
-            Owner = owner;
             UserIds = new List<int>();
             SessionIds = new List<Guid>();
         }
 
-        public UserModel Owner { get; }
+        public UserModel Owner { get; set; }
 
         [XMessageField("userid")]
         public List<int> UserIds { get; set; }

@@ -5,22 +5,11 @@ namespace PFire.Core.Messages.Outbound
 {
     internal sealed class FriendInvite : IMessage
     {
-        public FriendInvite(string username, string nickname, string message)
+        public FriendInvite()
         {
-            Usernames = new List<string>
-            {
-                username
-            };
-
-            Nicknames = new List<string>
-            {
-                nickname
-            };
-
-            Messages = new List<string>
-            {
-                message
-            };
+            Usernames = new List<string>();
+            Nicknames = new List<string>();
+            Messages = new List<string>();
         }
 
         [XMessageField("name")]

@@ -6,17 +6,10 @@ namespace PFire.Core.Messages.Outbound
 {
     internal sealed class FriendStatusChange : IMessage
     {
-        public FriendStatusChange(Guid sessionId, string message)
+        public FriendStatusChange()
         {
-            SessionIds = new List<Guid>
-            {
-                sessionId
-            };
-
-            Messages = new List<string>
-            {
-                message
-            };
+            SessionIds = new List<Guid>();
+            Messages = new List<string>();
         }
 
         [XMessageField("sid")]
