@@ -174,25 +174,7 @@ namespace PFire.Core.Services
                     return;
                 }
 
-                try
-                {
-                    var message = _messageSerializer.Deserialize(messageBuffer);
-
-                    var username = User?.Username ?? "unknown";
-                    var userId = User?.Id ?? -1;
-
-                    _logger.LogDebug($"Recv message[{username},{userId}]: {message}");
-
-                    await _messageProcessor.Process(message, this, _clientManager);
-                }
-                catch (UnknownMessageTypeException messageTypeEx)
-                {
-                    _logger.LogDebug(messageTypeEx, "Unknown Message Type");
-                }
-                catch (UnknownXFireAttributeTypeException attributeTypeEx)
-                {
-                    _logger.LogDebug(attributeTypeEx, "Unknown XFireAttribute Type");
-                }
+                await HandleMessage(messageBuffer);
             }
         }
 
@@ -240,6 +222,34 @@ namespace PFire.Core.Services
 
                 return null;
             }
+        }
+
+        private async Task HandleMessage(byte[] messageBuffer)
+        {
+            IMessage message;
+            try
+            {
+                message = _messageSerializer.Deserialize(messageBuffer);
+            }
+            catch (UnknownMessageTypeException messageTypeEx)
+            {
+                _logger.LogDebug(messageTypeEx, "Unknown Message Type");
+
+                return;
+            }
+            catch (UnknownXFireAttributeTypeException attributeTypeEx)
+            {
+                _logger.LogDebug(attributeTypeEx, "Unknown XFireAttribute Type");
+
+                return;
+            }
+
+            var username = User?.Username ?? "unknown";
+            var userId = User?.Id ?? -1;
+
+            _logger.LogDebug($"Recv message[{username},{userId}]: {message}");
+
+            await _messageProcessor.Process(message, this, _clientManager);
         }
 
         public async Task<bool> ReadOpeningHeader()
