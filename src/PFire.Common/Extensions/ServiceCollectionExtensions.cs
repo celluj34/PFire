@@ -1,14 +1,27 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using PFire.Common.Models;
 using PFire.Common.Services;
 
 namespace PFire.Common.Extensions
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection RegisterCommon(this IServiceCollection serviceCollection)
+        public static IServiceCollection RegisterCommon(this IServiceCollection serviceCollection, IConfiguration configuration)
         {
-            return serviceCollection.AddSingleton<IDateTimeService, DateTimeService>();
+            return serviceCollection
+                   .AddSettings(configuration)
+                   .AddSingleton<IDateTimeService, DateTimeService>();
         }
 
+        private static IServiceCollection AddSettings(this IServiceCollection serviceCollection, IConfiguration configuration)
+        {
+            return serviceCollection.ConfigureSettings<ServerSettings>(configuration);
+        }
+
+        private static IServiceCollection ConfigureSettings<T>(this IServiceCollection serviceCollection, IConfiguration configuration) where T : class
+        {
+            return serviceCollection.Configure<T>(configuration.GetSection(typeof(T).Name));
+        }
     }
 }
