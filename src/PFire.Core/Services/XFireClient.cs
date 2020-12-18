@@ -154,7 +154,7 @@ namespace PFire.Core.Services
             }
         }
 
-        private async Task ClientThreadWorker()
+        private async void ClientThreadWorker()
         {
             while (_connected)
             {

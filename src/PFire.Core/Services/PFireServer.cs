@@ -48,7 +48,7 @@ namespace PFire.Core.Services
             _running = false;
         }
 
-        private async Task Accept()
+        private async void Accept()
         {
             while (_running)
             {
