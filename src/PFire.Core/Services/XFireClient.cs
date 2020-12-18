@@ -35,7 +35,6 @@ namespace PFire.Core.Services
         private readonly IMessageSerializer _messageSerializer;
         private bool _connected;
         private Func<IXFireClient, Task> _disconnectionHandler;
-        private bool _initialized;
         private DateTime _lastReceivedFrom;
         private TcpClient _tcpClient;
 
@@ -49,8 +48,6 @@ namespace PFire.Core.Services
             _messageProcessor = messageProcessor;
             _messageSerializer = messageSerializer;
         }
-
-        private TimeSpan ClientTimeout => TimeSpan.FromMinutes(ClientTimeoutInMinutes);
 
         public string Salt { get; private set; }
 
@@ -100,11 +97,6 @@ namespace PFire.Core.Services
                 return;
             }
 
-            if (!_initialized)
-            {
-                return;
-            }
-
             var payload = _messageSerializer.Serialize(message);
 
             await _tcpClient.Client.SendAsync(payload, SocketFlags.None);
@@ -130,7 +122,7 @@ namespace PFire.Core.Services
         {
             _disconnectionHandler = disconnectionHandler;
             _tcpClient = tcpClient;
-            _tcpClient.ReceiveTimeout = (int)TimeSpan.FromMilliseconds(300).TotalMilliseconds;
+            _tcpClient.ReceiveTimeout = (int)TimeSpan.FromMinutes(ClientTimeoutInMinutes).TotalMilliseconds;
 
             _connected = true;
 
@@ -141,8 +133,6 @@ namespace PFire.Core.Services
             _lastReceivedFrom = DateTime.UtcNow;
 
             _logger.LogInformation($"Client connected {_tcpClient.Client.RemoteEndPoint} and assigned session id {SessionId}");
-
-            ThreadPool.QueueUserWorkItem(sender => ClientThreadWorker());
         }
 
         protected override void DisposeManagedResources()
@@ -164,121 +154,115 @@ namespace PFire.Core.Services
             }
         }
 
-        private void CheckForLifetimeExpiry()
-        {
-            if (DateTime.UtcNow - _lastReceivedFrom <= ClientTimeout)
-            {
-                return;
-            }
-
-            _logger.LogError($"Client: {User.Username}-{SessionId} has timed out -> {_lastReceivedFrom}");
-            _clientManager.RemoveSession(this);
-        }
-
         private async Task ClientThreadWorker()
         {
             while (_connected)
             {
+                if (!_tcpClient.Connected)
+                {
+                    // the client says the other end has gone, 
+                    // lets shut down this client 
+                    _logger.LogError($"Client: {User.Username}-{SessionId} has disconnected");
+                    await _disconnectionHandler(this);
+
+                    return;
+                }
+
+                var messageBuffer = await GetMessage();
+                if (messageBuffer == null)
+                {
+                    return;
+                }
+
                 try
                 {
-                    if (!_tcpClient.Connected)
-                    {
-                        // the client says the other end has gone, 
-                        // lets shut down this client 
-                        _logger.LogError($"Client: {User.Username}-{SessionId} has disconnected");
-                        await _disconnectionHandler(this);
+                    var message = _messageSerializer.Deserialize(messageBuffer);
 
-                        return;
-                    }
+                    var username = User?.Username ?? "unknown";
+                    var userId = User?.Id ?? -1;
 
-                    var stream = _tcpClient.GetStream();
+                    _logger.LogDebug($"Recv message[{username},{userId}]: {message}");
 
-                    if (stream.DataAvailable)
-                    {
-                        if (_initialized)
-                        {
-                            await ReadMessage(stream);
-                        }
-                        else
-                        {
-                            await ReadOpeningHeader(stream);
-                        }
-
-                        // as we read something (i.e we're still here) we can update the last read time
-                        _lastReceivedFrom = DateTime.UtcNow;
-                    }
+                    await _messageProcessor.Process(message, this, _clientManager);
                 }
-                catch (IOException ioe)
+                catch (UnknownMessageTypeException messageTypeEx)
                 {
-                    _logger.LogError(ioe, "An exception occurred when reading from the tcp stream");
-                    // the read timed out 
-                    // this could indicate that the other end is bad
-                    // the lifetime handler will help
+                    _logger.LogDebug(messageTypeEx, "Unknown Message Type");
                 }
-
-                if (!_connected)
+                catch (UnknownXFireAttributeTypeException attributeTypeEx)
                 {
-                    continue;
+                    _logger.LogDebug(attributeTypeEx, "Unknown XFireAttribute Type");
                 }
-
-                // if the client hasn't disconnected 
-                // we check lifetime and go around again
-                await Task.Delay(TimeSpan.FromMilliseconds(100));
-                CheckForLifetimeExpiry();
             }
         }
 
-        private async Task ReadMessage(NetworkStream stream)
+        private async Task<byte[]> GetMessage()
         {
-            // Header determines size of message
-            var headerBuffer = new byte[2];
-            var read = await stream.ReadAsync(headerBuffer, 0, headerBuffer.Length);
-            if (read == 0)
-            {
-                _logger.LogCritical($"Client {User?.Username}-{SessionId} disconnected via 0 read");
-                await _disconnectionHandler(this);
-                return;
-            }
-
-            var messageLength = BitConverter.ToInt16(headerBuffer, 0) - headerBuffer.Length;
-            var messageBuffer = new byte[messageLength];
-            read = await stream.ReadAsync(messageBuffer, 0, messageLength);
-
-            _logger.LogTrace($"RECEIVED RAW: {BitConverter.ToString(messageBuffer)}");
-
             try
             {
-                var message = _messageSerializer.Deserialize(messageBuffer);
+                var stream = _tcpClient.GetStream();
 
-                var username = User?.Username ?? "unknown";
-                var userId = User?.Id ?? -1;
+                // Header determines size of message
+                var headerBuffer = new byte[2];
+                var read = await stream.ReadAsync(headerBuffer, 0, headerBuffer.Length);
+                if (read == 0)
+                {
+                    _logger.LogCritical($"Client {User?.Username}-{SessionId} disconnected via 0 read");
+                    await _disconnectionHandler(this);
+                    return null;
+                }
 
-                _logger.LogDebug($"Recv message[{username},{userId}]: {message}");
+                var messageLength = BitConverter.ToInt16(headerBuffer, 0) - headerBuffer.Length;
+                var messageBuffer = new byte[messageLength];
+                read = await stream.ReadAsync(messageBuffer, 0, messageLength);
 
-                await _messageProcessor.Process(message, this, _clientManager);
+                _logger.LogTrace($"RECEIVED RAW: {BitConverter.ToString(messageBuffer)}");
+
+                // as we read something (i.e we're still here) we can update the last read time
+                _lastReceivedFrom = DateTime.UtcNow;
+
+                return messageBuffer;
             }
-            catch (UnknownMessageTypeException messageTypeEx)
+            catch (IOException ioe)
             {
-                _logger.LogDebug(messageTypeEx, "Unknown Message Type");
+                // the read timed out 
+                // this could indicate that the other end is bad
+                // the lifetime handler will help
+                _logger.LogError(ioe, "An exception occurred when reading from the tcp stream");
+                await _disconnectionHandler(this);
+
+                return null;
             }
-            catch (UnknownXFireAttributeTypeException attributeTypeEx)
+            catch (Exception ex)
             {
-                _logger.LogDebug(attributeTypeEx, "Unknown XFireAttribute Type");
+                _logger.LogError(ex, $"Client: {User.Username}-{SessionId} has timed out -> {_lastReceivedFrom}");
+                await _disconnectionHandler(this);
+
+                return null;
             }
         }
 
-        private async Task ReadOpeningHeader(NetworkStream stream)
+        public async Task<bool> ReadOpeningHeader()
         {
+            var stream = _tcpClient.GetStream();
+
             // First time the client connects, an opening statement of 4 bytes is sent that needs to be ignored
             var openingStatementBuffer = new byte[4];
             var read = await stream.ReadAsync(openingStatementBuffer, 0, openingStatementBuffer.Length);
 
-            _initialized = read == 4;
-
-            if (!_initialized)
+            if (read == 4)
             {
-                _logger.LogError($"Failed to read header bytes from {SessionId}");
+                return true;
             }
+
+            _logger.LogError($"Failed to read header bytes from {SessionId}");
+
+            return false;
+        }
+
+        public void BeginRead()
+        {
+            ThreadPool.QueueUserWorkItem(sender => ClientThreadWorker());
         }
     }
 }

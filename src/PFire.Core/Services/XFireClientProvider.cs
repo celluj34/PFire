@@ -7,7 +7,7 @@ namespace PFire.Core.Services
 {
     internal interface IXFireClientProvider
     {
-        IXFireClient GetClient(TcpClient tcpClient, Func<IXFireClient, Task> disconnectionHandler);
+        Task<IXFireClient> GetClient(TcpClient tcpClient, Func<IXFireClient, Task> disconnectionHandler);
     }
 
     internal sealed class XFireClientProvider : IXFireClientProvider
@@ -19,10 +19,18 @@ namespace PFire.Core.Services
             _serviceProvider = serviceProvider;
         }
 
-        public IXFireClient GetClient(TcpClient tcpClient, Func<IXFireClient, Task> disconnectionHandler)
+        public async Task<IXFireClient> GetClient(TcpClient tcpClient, Func<IXFireClient, Task> disconnectionHandler)
         {
             var xFireClient = _serviceProvider.GetRequiredService<XFireClient>();
             xFireClient.Init(tcpClient, disconnectionHandler);
+
+            var initialized = await xFireClient.ReadOpeningHeader();
+            if (!initialized)
+            {
+                return null;
+            }
+
+            xFireClient.BeginRead();
 
             return xFireClient;
         }
