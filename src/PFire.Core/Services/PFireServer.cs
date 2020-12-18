@@ -33,22 +33,19 @@ namespace PFire.Core.Services
             _logger = logger;
         }
 
-        public Task Start(CancellationToken cancellationToken)
+        public async Task Start(CancellationToken cancellationToken)
         {
+            await _listener.Start(cancellationToken);
             _running = true;
-            _listener.Start();
             _logger.LogInformation($"PFire Server listening on {_listener.LocalEndpoint}");
-            Task.Run(() => Accept().ConfigureAwait(false), cancellationToken);
 
-            return Task.CompletedTask;
+            ThreadPool.QueueUserWorkItem(sender => Accept());
         }
 
-        public Task Stop(CancellationToken cancellationToken)
+        public async Task Stop(CancellationToken cancellationToken)
         {
-            _listener.Stop();
+            await _listener.Stop(cancellationToken);
             _running = false;
-
-            return Task.CompletedTask;
         }
 
         private async Task Accept()
@@ -56,9 +53,12 @@ namespace PFire.Core.Services
             while (_running)
             {
                 var tcpClient = await _listener.AcceptTcpClientAsync().ConfigureAwait(false);
-                var newXFireClient = _xFireClientProvider.GetClient(tcpClient, OnDisconnection);
+                var newXFireClient = await _xFireClientProvider.GetClient(tcpClient, OnDisconnection);
 
-                _clientManager.AddSession(newXFireClient);
+                if (newXFireClient != null)
+                {
+                    _clientManager.AddSession(newXFireClient);
+                }
             }
         }
 

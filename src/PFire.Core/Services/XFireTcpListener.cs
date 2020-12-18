@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace PFire.Core.Services
@@ -7,8 +8,8 @@ namespace PFire.Core.Services
     internal interface IXFireTcpListener
     {
         EndPoint LocalEndpoint { get; }
-        Task Start();
-        Task Stop();
+        Task Start(CancellationToken cancellationToken);
+        Task Stop(CancellationToken cancellationToken);
         Task<TcpClient> AcceptTcpClientAsync();
     }
 
@@ -21,14 +22,14 @@ namespace PFire.Core.Services
             _tcpListener = tcpListener;
         }
 
-        public async Task Start()
+        public async Task Start(CancellationToken cancellationToken)
         {
             await Task.Yield();
 
             _tcpListener.Start();
         }
 
-        public async Task Stop()
+        public async Task Stop(CancellationToken cancellationToken)
         {
             await Task.Yield();
 
