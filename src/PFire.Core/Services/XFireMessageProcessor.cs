@@ -66,7 +66,7 @@ namespace PFire.Core.Services
 
                     ChatMessage BuildChatMessageResponse(Guid sessionId)
                     {
-                        return new ChatMessage
+                        return new()
                         {
                             SessionId = sessionId,
                             MessagePayload = new Dictionary<string, dynamic>(chatMessage.MessagePayload)
@@ -237,7 +237,7 @@ namespace PFire.Core.Services
                     var user = await _database.QueryUser(loginRequest.Username);
                     if (user != null)
                     {
-                        if (user.Password != loginRequest.Password)
+                        if (!BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password))
                         {
                             await xFireClient.SendAndProcessMessage(new LoginFailure());
 
@@ -246,7 +246,8 @@ namespace PFire.Core.Services
                     }
                     else
                     {
-                        user = await _database.InsertUser(loginRequest.Username, loginRequest.Password, xFireClient.Salt);
+                        var hashedPassword = BCrypt.Net.BCrypt.HashPassword(loginRequest.Password);
+                        user = await _database.InsertUser(loginRequest.Username, hashedPassword, xFireClient.Salt);
                     }
 
                     // Remove any older sessions from this user (duplicate logins)
