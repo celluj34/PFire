@@ -29,8 +29,6 @@ namespace PFire.Core.Services
 
         public async Task Process(IMessage message, IXFireClient xFireClient, IXFireClientManager xFireClientManager)
         {
-            await Task.Yield();
-
             switch (message)
             {
                 case ChatMessage chatMessage:
